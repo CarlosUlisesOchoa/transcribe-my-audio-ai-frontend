@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/StatusBadge"
 import { useJobsStore } from "@/store/jobs"
 import { saveTextFile } from "@/lib/download"
+import type { JobResult } from "@/lib/api"
 
 const fmt = new Intl.DateTimeFormat(undefined, {
   dateStyle: "short",
@@ -29,6 +30,13 @@ const fmt = new Intl.DateTimeFormat(undefined, {
 export default function JobsPage() {
   const jobs = useJobsStore((s) => s.jobs)
   const removeJob = useJobsStore((s) => s.removeJob)
+
+  function resolveTranscripts(result?: JobResult) {
+    return {
+      onlyTranscription: result?.text ?? result?.transcription,
+      withTimePrefix: result?.formatted ?? result?.transcription_with_time,
+    }
+  }
 
   const sorted = [...jobs].sort(
     (a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime()
@@ -74,6 +82,8 @@ export default function JobsPage() {
                     ? `Position #${job.queue_position}`
                     : undefined
 
+              const transcripts = resolveTranscripts(job.result)
+
               return (
                 <TableRow key={job.job_id}>
                   <TableCell className="font-medium">{job.name}</TableCell>
@@ -98,22 +108,32 @@ export default function JobsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onSelect={() => {
-                              if (!job.result) return
-                              saveTextFile(`${job.name}.txt`, job.result.formatted)
-                              toast.success("Downloaded formatted transcript")
+                            disabled={!transcripts.onlyTranscription}
+                            onClick={() => {
+                              if (!transcripts.onlyTranscription) {
+                                toast.error("Transcription is not ready yet")
+                                return
+                              }
+
+                              saveTextFile(`${job.name}.txt`, transcripts.onlyTranscription)
+                              toast.success("Downloaded transcription")
                             }}
                           >
-                            Download formatted (.txt)
+                            Download transcription (.txt)
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => {
-                              if (!job.result) return
-                              saveTextFile(`${job.name}-plain.txt`, job.result.text)
-                              toast.success("Downloaded plain transcript")
+                            disabled={!transcripts.withTimePrefix}
+                            onClick={() => {
+                              if (!transcripts.withTimePrefix) {
+                                toast.error("Timestamped transcription is not ready yet")
+                                return
+                              }
+
+                              saveTextFile(`${job.name}-with-time-prefix.txt`, transcripts.withTimePrefix)
+                              toast.success("Downloaded transcription with time prefix")
                             }}
                           >
-                            Download plain (.txt)
+                            Download transcription with time prefix (.txt)
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

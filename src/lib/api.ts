@@ -8,8 +8,10 @@ export interface TranscribeResponse {
 }
 
 export interface JobResult {
-  formatted: string
-  text: string
+  formatted?: string
+  text?: string
+  transcription_with_time?: string
+  transcription?: string
 }
 
 export interface JobResponse {
