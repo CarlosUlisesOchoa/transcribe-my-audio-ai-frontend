@@ -1,7 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL as string | undefined
-const API_KEY = import.meta.env.VITE_API_KEY as string | undefined
+const apiUrl = import.meta.env.VITE_API_URL
+const apiKey = import.meta.env.VITE_API_KEY
 
-if (!API_URL) throw new Error("VITE_API_URL is not set")
-if (!API_KEY) throw new Error("VITE_API_KEY is not set")
+if (!apiUrl) throw new Error("VITE_API_URL is not set")
+if (!apiKey) throw new Error("VITE_API_KEY is not set")
 
-export { API_URL, API_KEY }
+export const API_URL: string = apiUrl
+export const API_KEY: string = apiKey

@@ -124,7 +124,10 @@ export default function UploadPage() {
             {/* Language selector */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Language</label>
-              <Select value={language} onValueChange={setLanguage}>
+              <Select
+                value={language}
+                onValueChange={(value) => setLanguage(value ?? "")}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Auto-detect" />
                 </SelectTrigger>
