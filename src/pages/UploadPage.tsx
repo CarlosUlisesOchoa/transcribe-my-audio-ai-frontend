@@ -33,6 +33,7 @@ export default function UploadPage() {
 
   const [file, setFile] = useState<File | null>(null)
   const [language, setLanguage] = useState("")
+  const [diarize, setDiarize] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [dragging, setDragging] = useState(false)
 
@@ -62,7 +63,7 @@ export default function UploadPage() {
 
     setSubmitting(true)
     try {
-      const data = await postTranscribe(file, language || null)
+      const data = await postTranscribe(file, language || null, diarize)
       addJob({
         job_id: data.job_id,
         name: file.name.replace(/\.[^.]+$/, ""),
@@ -139,6 +140,30 @@ export default function UploadPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Speaker diarization toggle */}
+            <div className="space-y-1.5">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  Speaker diarization
+                </span>
+                <span className="relative inline-flex shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={diarize}
+                    onChange={(e) => setDiarize(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="h-6 w-11 rounded-full bg-input transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" />
+                  <span className="pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow-sm transition-transform peer-checked:translate-x-5" />
+                </span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Only enrolled voices are tagged by name; unrecognized speakers show
+                as <span className="font-medium text-foreground">unknown</span>. Turn
+                off for plain transcription with timestamps only.
+              </p>
             </div>
 
             <Button

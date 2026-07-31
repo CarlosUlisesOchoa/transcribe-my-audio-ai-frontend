@@ -28,11 +28,20 @@ function headers(): HeadersInit {
 
 export async function postTranscribe(
   file: File,
-  language: string | null
+  language: string | null,
+  diarize: boolean
 ): Promise<TranscribeResponse> {
   const form = new FormData()
   form.append("file", file)
   if (language) form.append("language", language)
+  form.append("diarize", String(diarize))
+  if (diarize) {
+    // Diarization on → tag enrolled voices by name, auto-enroll + label any
+    // unrecognized speaker as unknown-NN, and run word-level alignment so a
+    // short interjection gets its own speaker line instead of being swallowed.
+    form.append("enroll_unknown", "true")
+    form.append("align", "true")
+  }
 
   const res = await fetch(`${API_URL}/transcribe`, {
     method: "POST",
