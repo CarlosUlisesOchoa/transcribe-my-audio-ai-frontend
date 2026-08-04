@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
+import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
+import { Button } from "@/components/ui/button"
 import { useJobPolling } from "@/hooks/useJobPolling"
 import { cn } from "@/lib/utils"
-import { FaMicrophoneAlt } from "react-icons/fa"
+import { FaMicrophoneAlt, FaSync, FaSpinner } from "react-icons/fa"
 import { API_URL } from "@/config"
+import { triggerWatcher } from "@/lib/api"
 
 type ApiHealthStatus = "checking" | "healthy" | "unhealthy"
 
@@ -17,17 +20,41 @@ export function Layout() {
 
   const [apiHealthStatus, setApiHealthStatus] = useState<ApiHealthStatus>("checking")
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null)
+  const [watcherTriggerConfigured, setWatcherTriggerConfigured] = useState(false)
+  const [triggering, setTriggering] = useState(false)
 
   const checkHealth = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/health`)
       setApiHealthStatus(res.ok ? "healthy" : "unhealthy")
+      if (res.ok) {
+        const body = (await res.json().catch(() => null)) as { watcher_trigger_configured?: boolean } | null
+        setWatcherTriggerConfigured(Boolean(body?.watcher_trigger_configured))
+      } else {
+        setWatcherTriggerConfigured(false)
+      }
     } catch {
       setApiHealthStatus("unhealthy")
+      setWatcherTriggerConfigured(false)
     } finally {
       setLastCheckedAt(new Date())
     }
   }, [])
+
+  async function handleTriggerWatcher() {
+    if (triggering) return
+    setTriggering(true)
+    try {
+      await triggerWatcher()
+      toast.success(
+        "Scan signal sent — the host watcher will pick it up within a few seconds if it's running"
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Watcher trigger failed")
+    } finally {
+      setTriggering(false)
+    }
+  }
 
   useEffect(() => {
     const initialTimeout = window.setTimeout(() => {
@@ -86,27 +113,44 @@ export function Layout() {
               </span>
             )}
           </div>
-          <nav className="flex gap-1">
-            {[
-              { to: "/upload", label: "Upload" },
-              { to: "/jobs", label: "Jobs" },
-            ].map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  )
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={triggering || !watcherTriggerConfigured}
+              onClick={() => void handleTriggerWatcher()}
+              title={
+                watcherTriggerConfigured
+                  ? "Trigger the host watcher's folder scan now"
+                  : "Watcher trigger endpoint not configured on the server"
+              }
+            >
+              {triggering ? <FaSpinner className="animate-spin" /> : <FaSync />}
+              Scan now
+            </Button>
+            <nav className="flex gap-1">
+              {[
+                { to: "/upload", label: "Upload" },
+                { to: "/jobs", label: "Jobs" },
+              ].map(({ to, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
 
