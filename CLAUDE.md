@@ -24,7 +24,8 @@ A single-page frontend for a self-hosted Whisper transcription API. It is a **st
 
 - `POST /transcribe` — multipart `file`, optional `language`, optional booleans `diarize` / `align` / `enroll_unknown`, header `X-API-Key` → `{ job_id, status }`. The **Speaker diarization** toggle in `UploadPage` drives all three: ON sends `diarize=true` + `enroll_unknown=true` + `align=true` (enrolled voices tagged by name, unrecognized speakers auto-labeled `unknown-NN`, per-word alignment splits mixed segments); OFF sends `diarize=false` (plain transcription + timestamps). Omitting `diarize` lets the backend fall back to its `ENABLE_DIARIZATION` env default — the toggle always sends it explicitly so the choice is never ambiguous.
 - `GET /jobs/{job_id}` — header `X-API-Key` → `{ status, filename, result?, error?, queue_position? }`
-- `GET /health` — no auth
+- `POST /watcher/trigger` — header `X-API-Key`, no body → `{ status, note? }` on success, `503` if the backend's `WATCHER_CONTROL_DIR` isn't configured. Fires a host-side watched-folder scan on demand instead of waiting for its hourly schedule. The backend can only confirm it *wrote* the signal, never that a watcher process actually picked it up — the "Scan now" button's success toast and this endpoint's `note` field both say so explicitly; don't upgrade the wording to imply a completed scan.
+- `GET /health` — no auth. Also returns `watcher_trigger_configured: boolean`, which `Layout` uses to enable/disable the "Scan now" button (see below).
 - Statuses: `queued | processing | completed | failed`
 
 There is **no list endpoint**. The backend has no per-user job history — so the browser's localStorage *is* the job list.
@@ -41,7 +42,7 @@ There is **no list endpoint**. The backend has no per-user job history — so th
 Consequences worth knowing before changing things:
 - The polling `useEffect` depends on the `jobs` array, so it tears down and recreates the interval on every store write. Intentional for now, but it means the 10s clock resets on each update.
 - Wiping localStorage loses all job history irrecoverably — jobs cannot be re-listed from the server.
-- `Layout.tsx` separately polls `/health` every 5 minutes to drive the header status dot.
+- `Layout.tsx` separately polls `/health` every 5 minutes to drive the header status dot. The same check reads `watcher_trigger_configured` and enables/disables the header's "Scan now" button accordingly (disabled state carries a `title` explaining why, no separate tooltip component). Clicking it calls `triggerWatcher()` (`lib/api.ts`) → `POST /watcher/trigger` and shows a `sonner` toast either way; it never touches the jobs store since this doesn't create a job — the watcher submits things to `/transcribe` itself, on the host, outside this app's visibility.
 
 **Backend field-name drift is handled in the UI, not the API layer.** `JobsPage.resolveTranscripts()` reads `result.text ?? result.transcription` and `result.formatted ?? result.transcription_with_time`. `JobResult` fields are all optional for this reason. Keep both spellings working unless the backend is confirmed unified.
 

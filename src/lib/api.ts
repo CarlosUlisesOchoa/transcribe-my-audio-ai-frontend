@@ -69,3 +69,25 @@ export async function getJob(jobId: string): Promise<JobResponse> {
 
   return res.json() as Promise<JobResponse>
 }
+
+export interface WatcherTriggerResponse {
+  status: string
+  note?: string
+}
+
+// Fires the host-side watched-folder scan now instead of waiting for its hourly schedule.
+// The backend can only confirm the signal was written, not that the watcher (a separate
+// host process it has no visibility into) actually picked it up.
+export async function triggerWatcher(): Promise<WatcherTriggerResponse> {
+  const res = await fetch(`${API_URL}/watcher/trigger`, {
+    method: "POST",
+    headers: headers(),
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`Watcher trigger failed (${res.status}): ${text}`)
+  }
+
+  return res.json() as Promise<WatcherTriggerResponse>
+}
